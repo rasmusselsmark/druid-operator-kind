@@ -1,0 +1,166 @@
+#!/bin/bash
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;36m'
+NC='\033[0m' # No Color
+
+# Configuration
+CLUSTER_NAME="druid-operator"
+NAMESPACE="druid"
+
+# Helper functions
+log_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+check_prerequisites() {
+    log_info "Checking prerequisites..."
+
+    commands=("docker" "kind" "kubectl" "helm")
+    for cmd in "${commands[@]}"; do
+        if ! command -v $cmd &> /dev/null; then
+            log_error "$cmd is not installed. Please install it first."
+            exit 1
+        fi
+    done
+
+    # Check if Docker is running
+    if ! docker info &> /dev/null; then
+        log_error "Docker is not running. Please start Docker first."
+        exit 1
+    fi
+
+    log_success "All prerequisites are installed and running!"
+}
+
+create_kind_cluster() {
+    log_info "Creating kind cluster: $CLUSTER_NAME"
+
+    if kind get clusters | grep -q "^$CLUSTER_NAME$"; then
+        log_info "Cluster $CLUSTER_NAME already exists. Continuing..."
+        return 0
+    fi
+
+    # Create temporary data directory
+    mkdir -p /tmp/druid-data
+
+    # Create cluster
+    kind create cluster --name $CLUSTER_NAME --config kind-config.yaml
+
+    # Wait for cluster to be ready
+    kubectl wait --for=condition=Ready nodes --all --timeout=300s
+
+    # Create namespace used for installing Druid later
+    kubectl apply -f manifests/namespace.yaml
+
+    log_success "Kind cluster created successfully!"
+}
+
+install_druid_operator() {
+    log_info "Installing Druid Operator..."
+
+    # Check if Druid Operator is already installed
+    if helm list -n druid-operator | grep -q "druid-operator"; then
+        log_info "Druid Operator is already installed. Continuing..."
+        return 0
+    fi
+
+    # Add Helm repositories
+    helm repo add datainfra https://charts.datainfra.io
+    helm repo update
+
+    # Install Druid Operator
+    helm install druid-operator datainfra/druid-operator \
+        --namespace druid-operator \
+        --create-namespace \
+        --set image.tag=v1.3.0 \
+        --wait --timeout=300s
+
+    # Verify installation
+    kubectl wait --for=condition=available deployment/druid-operator -n druid-operator --timeout=300s
+
+    log_success "Druid Operator installed successfully!"
+}
+
+deploy_zookeeper() {
+    log_info "Deploying ZooKeeper..."
+
+    kubectl apply -n $NAMESPACE -f manifests/tiny-cluster-zk.yaml
+
+    log_success "ZooKeeper deployed successfully!"
+}
+
+deploy_druid_cluster() {
+    log_info "Deploying Druid cluster..."
+
+    # Wait for dependencies to be ready
+    log_info "Waiting for dependencies to be ready..."
+
+    # Apply Druid cluster
+    kubectl apply -n $NAMESPACE -f manifests/tiny-cluster.yaml
+
+    log_info "Waiting for Druid cluster to be ready (this may take several minutes)..."
+
+    kubectl wait --for=jsonpath='{status.druidNodeStatus.druidNodeConditionType}'=DruidClusterReady druid/tiny-cluster -n $NAMESPACE --timeout=300s
+
+    log_success "Druid cluster created"
+}
+
+get_access_info() {
+    log_info "Getting access information..."
+
+    echo -e "${GREEN}=== Druid Cluster Setup Complete ===${NC}"
+    echo
+    echo "To access your Druid cluster:"
+    echo
+    echo "1. Port forward the router service:"
+    echo -e "   ${YELLOW}kubectl port-forward -n druid svc/druid-tiny-cluster-routers 8088:8088${NC}"
+    echo
+    echo -e "2. Open your browser to: ${YELLOW}http://localhost:8088${NC}"
+    echo
+    echo "3. Check cluster status:"
+    echo -e "   ${YELLOW}kubectl get pods -n $NAMESPACE${NC}"
+    echo -e "   ${YELLOW}kubectl get druid -n $NAMESPACE${NC}"
+    echo
+    echo "Useful Commands:"
+    echo -e "- View logs: ${YELLOW}kubectl logs -n $NAMESPACE <pod-name>${NC}"
+    echo -e "- Describe Druid: ${YELLOW}kubectl describe druid druid-cluster -n $NAMESPACE${NC}"
+    echo
+    echo -e "${GREEN}Happy querying with Apache Druid!${NC}"
+    echo
+}
+
+main() {
+    log_info "Starting Apache Druid on Kubernetes setup..."
+
+    check_prerequisites
+    create_kind_cluster
+    install_druid_operator
+    deploy_zookeeper
+    deploy_druid_cluster
+    get_access_info
+
+    log_success "Setup completed! Check the access information above."
+}
+
+# Check if running as main script
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main "$@"
+fi
