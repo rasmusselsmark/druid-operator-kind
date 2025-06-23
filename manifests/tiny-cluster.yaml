@@ -1,7 +1,7 @@
 # From https://github.com/datainfrahq/druid-operator/blob/master/examples/tiny-cluster.yaml
 #
-# This spec only works on a single node kubernetes cluster(e.g. typical k8s cluster setup for dev using kind/minikube or single node AWS EKS cluster etc)
-# as it uses local disk as "deep storage".
+# This spec works on a single node kubernetes cluster (e.g. typical k8s cluster setup for dev using kind/minikube or single node AWS EKS cluster etc)
+# Modified to use MinIO S3-compatible storage instead of local disk for "deep storage".
 #
 apiVersion: "druid.apache.org/v1alpha1"
 kind: "Druid"
@@ -67,13 +67,19 @@ spec:
     druid.metadata.storage.connector.port=1527
     druid.metadata.storage.connector.createTables=true
 
-    # Deep Storage
-    druid.storage.type=local
-    druid.storage.storageDirectory=/druid/deepstorage
+    # Deep Storage - MinIO S3 Compatible
+    druid.storage.type=s3
+    druid.storage.bucket=druid-bucket
+    druid.storage.baseKey=segments
+    druid.s3.accessKey=minio
+    druid.s3.secretKey=minio123
+    druid.s3.endpoint.url=https://minio-pool-0-0.minio-hl.druid.svc.cluster.local:9000
+    druid.s3.enablePathStyleAccess=true
+    druid.s3.protocol=http
     #
     # Extensions
     #
-    druid.extensions.loadList=["druid-kafka-indexing-service"]
+    druid.extensions.loadList=["druid-kafka-indexing-service","druid-s3-extensions"]
 
     #
     # Service discovery
@@ -251,15 +257,9 @@ spec:
   volumeMounts:
     - mountPath: /druid/data
       name: data-volume
-    - mountPath: /druid/deepstorage
-      name: deepstorage-volume
   volumes:
     - name: data-volume
       emptyDir: {}
-    - name: deepstorage-volume
-      hostPath:
-        path: /tmp/druid/deepstorage
-        type: DirectoryOrCreate
   env:
     - name: POD_NAME
       valueFrom:

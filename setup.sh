@@ -99,6 +99,39 @@ install_druid_operator() {
     log_success "Druid Operator installed successfully!"
 }
 
+install_minio_operator() {
+    log_info "Installing MinIO Operator..."
+
+    # Check if MinIO Operator is already installed
+    if kubectl get crd tenants.minio.min.io &> /dev/null; then
+        log_info "MinIO Operator is already installed. Continuing..."
+        return 0
+    fi
+
+    # Install MinIO Operator
+    kubectl apply -k "github.com/minio/operator?ref=v5.0.15"
+
+    # Wait for operator to be ready
+    kubectl wait --for=condition=available deployment/minio-operator -n minio-operator --timeout=300s
+
+    log_success "MinIO Operator installed successfully!"
+}
+
+deploy_minio() {
+    log_info "Deploying MinIO Tenant..."
+
+    kubectl apply -f manifests/minio.yaml
+
+    # Wait for MinIO tenant to be ready
+    log_info "Waiting for MinIO tenant to be ready..."
+    kubectl wait --for=jsonpath='{status.currentState}'=Initialized tenant/minio -n $NAMESPACE --timeout=300s
+
+    # Wait for bucket creation job to complete
+    kubectl wait --for=condition=complete job/minio-bucket-creator -n $NAMESPACE --timeout=300s
+
+    log_success "MinIO tenant deployed successfully!"
+}
+
 deploy_zookeeper() {
     log_info "Deploying ZooKeeper..."
 
@@ -135,7 +168,11 @@ get_access_info() {
     echo
     echo -e "2. Open your browser to: ${YELLOW}http://localhost:8088${NC}"
     echo
-    echo "3. Check cluster status:"
+    echo "3. Access MinIO Console (optional):"
+    echo -e "   ${YELLOW}kubectl port-forward -n druid svc/minio-console 9443:9443${NC}"
+    echo -e "   Open: ${YELLOW}https://localhost:9443${NC} (accept cert - admin/password: minio/minio123)"
+    echo
+    echo "4. Check cluster status:"
     echo -e "   ${YELLOW}kubectl get pods -n $NAMESPACE${NC}"
     echo -e "   ${YELLOW}kubectl get druid -n $NAMESPACE${NC}"
     echo
@@ -153,7 +190,9 @@ main() {
     check_prerequisites
     create_kind_cluster
     install_druid_operator
+    install_minio_operator
     deploy_zookeeper
+    deploy_minio
     deploy_druid_cluster
     get_access_info
 
