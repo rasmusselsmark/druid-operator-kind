@@ -10,7 +10,7 @@ BLUE='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Configuration
-CLUSTER_NAME="druid-operator"
+CLUSTER_NAME="druid"
 NAMESPACE="druid"
 
 # Helper functions
@@ -109,7 +109,7 @@ install_minio_operator() {
     fi
 
     # Install MinIO Operator
-    kubectl apply -k "github.com/minio/operator?ref=v5.0.15"
+    kubectl apply -k "github.com/minio/operator"
 
     # Wait for operator to be ready
     kubectl wait --for=condition=available deployment/minio-operator -n minio-operator --timeout=300s
@@ -151,7 +151,7 @@ deploy_druid_cluster() {
 
     log_info "Waiting for Druid cluster to be ready (this may take several minutes)..."
 
-    kubectl wait --for=jsonpath='{status.druidNodeStatus.druidNodeConditionType}'=DruidClusterReady druid/tiny-cluster -n $NAMESPACE --timeout=300s
+    kubectl wait --for=jsonpath='{status.druidNodeStatus.druidNodeConditionType}'=DruidClusterReady druid/tiny-cluster -n $NAMESPACE --timeout=360s
 
     log_success "Druid cluster created"
 }
@@ -189,11 +189,14 @@ main() {
 
     check_prerequisites
     create_kind_cluster
-    install_druid_operator
+
     install_minio_operator
-    deploy_zookeeper
     deploy_minio
+
+    install_druid_operator
+    deploy_zookeeper
     deploy_druid_cluster
+
     get_access_info
 
     log_success "Setup completed! Check the access information above."

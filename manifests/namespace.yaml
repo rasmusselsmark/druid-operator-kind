@@ -5,4 +5,4 @@ metadata:
   labels:
     name: druid
     app.kubernetes.io/name: druid
-    app.kubernetes.io/part-of: druid-operator
+    app.kubernetes.io/part-of: druid

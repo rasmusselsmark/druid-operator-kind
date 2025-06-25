@@ -73,9 +73,10 @@ spec:
     druid.storage.baseKey=segments
     druid.s3.accessKey=minio
     druid.s3.secretKey=minio123
-    druid.s3.endpoint.url=https://minio-pool-0-0.minio-hl.druid.svc.cluster.local:9000
+    druid.s3.endpoint.url=http://minio-hl.druid.svc.cluster.local:9000
     druid.s3.enablePathStyleAccess=true
     druid.s3.protocol=http
+
     #
     # Extensions
     #
