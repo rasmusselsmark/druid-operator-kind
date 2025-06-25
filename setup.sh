@@ -164,13 +164,13 @@ get_access_info() {
     echo "To access your Druid cluster:"
     echo
     echo "1. Port forward the router service:"
-    echo -e "   ${YELLOW}kubectl port-forward -n druid svc/druid-tiny-cluster-routers 8088:8088${NC}"
+    echo -e "   ${YELLOW}kubectl port-forward -n druid svc/druid-tiny-cluster-routers 8088${NC}"
     echo
     echo -e "2. Open your browser to: ${YELLOW}http://localhost:8088${NC}"
     echo
     echo "3. Access MinIO Console (optional):"
-    echo -e "   ${YELLOW}kubectl port-forward -n druid svc/minio-console 9443:9443${NC}"
-    echo -e "   Open: ${YELLOW}https://localhost:9443${NC} (accept cert - admin/password: minio/minio123)"
+    echo -e "   ${YELLOW}kubectl port-forward -n druid svc/minio-console 9090${NC}"
+    echo -e "   Open: ${YELLOW}http://localhost:9090${NC} (admin/password: minio/minio123)"
     echo
     echo "4. Check cluster status:"
     echo -e "   ${YELLOW}kubectl get pods -n $NAMESPACE${NC}"

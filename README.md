@@ -1,6 +1,8 @@
 # Apache Druid on Kubernetes with kind
 
-This repository provides a complete setup guide for running Apache Druid locally using Kubernetes-in-Docker (kind) and the Druid Operator, based on https://github.com/datainfrahq/druid-operator
+This repository provides a setup guide for running Apache Druid locally using Kubernetes-in-Docker (kind) and the Druid Operator, using https://github.com/datainfrahq/druid-operator and https://github.com/minio/operator (local S3 bucket)
+
+![Apache Druid](docs/images/druid.png)
 
 ### Prerequisites
 
