@@ -120,7 +120,7 @@ install_minio_operator() {
 deploy_minio() {
     log_info "Deploying MinIO Tenant..."
 
-    kubectl apply -f manifests/minio.yaml
+    kubectl apply -n $NAMESPACE -f manifests/minio.yaml
 
     # Wait for MinIO tenant to be ready
     log_info "Waiting for MinIO tenant to be ready..."

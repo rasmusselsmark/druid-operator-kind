@@ -3,7 +3,6 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: storage-configuration
-  namespace: druid
 type: Opaque
 stringData:
   config.env: |-
@@ -16,7 +15,6 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: storage-user
-  namespace: druid
 type: Opaque
 data:
   CONSOLE_ACCESS_KEY: Y29uc29sZQ==
@@ -26,7 +24,6 @@ apiVersion: minio.min.io/v2
 kind: Tenant
 metadata:
   name: minio
-  namespace: druid
   ## Optionally pass labels to be applied to the statefulset pods
   labels:
     app: minio
@@ -169,7 +166,6 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: minio-bucket-creator
-  namespace: druid
 spec:
   template:
     spec:
