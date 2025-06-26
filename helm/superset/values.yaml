@@ -1,0 +1,38 @@
+# Based on https://github.com/apache/superset/blob/master/helm/superset/values.yaml
+
+# from https://github.com/apache/superset/discussions/31431#discussioncomment-11558596
+bootstrapScript: |
+  #!/bin/bash
+
+  # Install system-level dependencies
+  apt-get update && apt-get install -y \
+    python3-dev \
+    default-libmysqlclient-dev \
+    build-essential \
+    pkg-config
+
+  # Install required Python packages
+  pip install \
+    authlib \
+    psycopg2-binary \
+    mysqlclient \
+    pydruid \
+
+  # Create bootstrap file if it doesn't exist
+  if [ ! -f ~/bootstrap ]; then
+    echo "Running Superset with uid {{ .Values.runAsUser }}" > ~/bootstrap
+  fi
+
+  # Create Druid database connection
+  superset db upgrade
+  superset init
+
+  echo "Creating Druid connection..."
+  superset set-database-uri \
+    -d "Druid" \
+    -u "druid://druid-tiny-cluster-routers.druid.svc.cluster.local:8088/druid/v2/sql"
+
+configOverrides:
+  secret: |
+    # Generate your own secret key for encryption. Use `openssl rand -base64 42` to generate a good key
+    SECRET_KEY = "SUjpvD83GornN10+F54T0XLvUl2xm4h96efGk8GodkmKDv1mNPQDXD+L"

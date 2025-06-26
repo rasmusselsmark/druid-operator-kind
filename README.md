@@ -17,7 +17,7 @@ Setup script uses these tools:
 ```
 ./setup.sh
 ```
-Follow instructions, Druid will be available at http://localhost:8088 (after port-forwarding).
+Follow instructions, Druid will be available at http://localhost:8088 and Superset on http://localhost:8080 (after port-forwarding).
 
 The `setup.sh` script is idempotent, so can be rerun again in case something failed/timed out.
 

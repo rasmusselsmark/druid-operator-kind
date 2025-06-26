@@ -14,6 +14,11 @@ CLUSTER_NAME="druid"
 NAMESPACE="druid"
 
 # Helper functions
+log_header() {
+    echo
+    echo -e "${BLUE}==========${NC} $1 ${BLUE}==========${NC}"
+}
+
 log_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }
@@ -156,6 +161,31 @@ deploy_druid_cluster() {
     log_success "Druid cluster created"
 }
 
+install_superset() {
+    log_info "Installing Apache Superset..."
+
+    # Check if Superset is already installed
+    if helm list -n $NAMESPACE | grep -q "superset"; then
+        log_info "Superset is already installed. Continuing..."
+        return 0
+    fi
+
+    # Add Helm repositories for Superset
+    helm repo add superset https://apache.github.io/superset
+    helm repo update
+
+    # Install Superset
+    helm install superset superset/superset \
+        --namespace $NAMESPACE \
+        --values helm/superset/values.yaml \
+        --wait --timeout=300s
+
+    # Verify installation
+    kubectl wait --for=condition=available deployment/superset -n $NAMESPACE --timeout=300s
+
+    log_success "Apache Superset installed successfully!"
+}
+
 ingest_wikipedia_datasource() {
     log_info "Starting Wikipedia data ingestion..."
 
@@ -168,8 +198,7 @@ ingest_wikipedia_datasource() {
 }
 
 get_access_info() {
-    log_info "Getting access information..."
-
+    echo
     echo -e "${GREEN}=== Druid Cluster Setup Complete ===${NC}"
     echo
     echo "To access your Druid cluster:"
@@ -181,9 +210,13 @@ get_access_info() {
     echo
     echo "3. Access MinIO Console (optional):"
     echo -e "   ${YELLOW}kubectl port-forward -n druid svc/minio-console 9090${NC}"
-    echo -e "   Open: ${YELLOW}http://localhost:9090${NC} (admin/password: minio/minio123)"
+    echo -e "   Open: ${YELLOW}http://localhost:9090${NC} (credentials: minio/minio123)"
     echo
-    echo "4. Check cluster status:"
+    echo "4. Access Superset Dashboard:"
+    echo -e "   ${YELLOW}kubectl port-forward -n druid svc/superset 8080:8088${NC}"
+    echo -e "   Open: ${YELLOW}http://localhost:8080${NC} (credentials: admin/admin)"
+    echo
+    echo "5. Check cluster status:"
     echo -e "   ${YELLOW}kubectl get pods -n $NAMESPACE${NC}"
     echo -e "   ${YELLOW}kubectl get druid -n $NAMESPACE${NC}"
     echo
@@ -191,24 +224,29 @@ get_access_info() {
     echo -e "- View logs: ${YELLOW}kubectl logs -n $NAMESPACE <pod-name>${NC}"
     echo -e "- Describe Druid: ${YELLOW}kubectl describe druid druid-cluster -n $NAMESPACE${NC}"
     echo
-    echo -e "${GREEN}Happy querying with Apache Druid!${NC}"
+    echo -e "${GREEN}Happy querying with Apache Druid and Superset!${NC}"
     echo
 }
 
 main() {
     log_info "Starting Apache Druid on Kubernetes setup..."
 
+    log_header "Kind cluster"
     check_prerequisites
     create_kind_cluster
 
+    log_header "MinIO"
     install_minio_operator
     deploy_minio
 
+    log_header "Druid"
     install_druid_operator
     deploy_zookeeper
     deploy_druid_cluster
-
     ingest_wikipedia_datasource
+
+    log_header "Superset"
+    install_superset
 
     get_access_info
 
