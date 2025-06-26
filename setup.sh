@@ -156,6 +156,17 @@ deploy_druid_cluster() {
     log_success "Druid cluster created"
 }
 
+ingest_wikipedia_datasource() {
+    log_info "Starting Wikipedia data ingestion..."
+
+    kubectl apply -n $NAMESPACE -f manifests/ingest-wikipedia.yaml
+
+    log_info "Wikipedia ingestion task submitted to Druid"
+    log_info "You can check ingestion status in the Druid console under Tasks"
+
+    log_success "Wikipedia ingestion initiated"
+}
+
 get_access_info() {
     log_info "Getting access information..."
 
@@ -196,6 +207,8 @@ main() {
     install_druid_operator
     deploy_zookeeper
     deploy_druid_cluster
+
+    ingest_wikipedia_datasource
 
     get_access_info
 
