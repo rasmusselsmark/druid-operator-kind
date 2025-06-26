@@ -341,9 +341,35 @@ spec:
         druid.processing.numMergeBuffers=1
         druid.processing.numThreads=1
 
-        # Segment storage
-        druid.segmentCache.locations=[{\"path\":\"/druid/data/segments\",\"maxSize\":10737418240}]
-        druid.server.maxSize=10737418240
+        # Segment storage, cache: 100MB, server: 1GB
+        druid.segmentCache.locations=[{\"path\":\"/druid/data/segments\",\"maxSize\":107374182}]
+        druid.server.maxSize=1073741824
+      extra.jvm.options: |-
+        -Xmx512M
+        -Xms512M
+
+    # based on https://github.com/druid-io/druid-operator/blob/master/docs/examples.md#configure-hotcold-for-historicals
+    historicals-tier2:
+      nodeType: "historical"
+      druid.port: 8088
+      nodeConfigMountPath: "/opt/druid/conf/druid/cluster/data/historical"
+      replicas: 1
+      runtime.properties: |
+        druid.service=druid/historical/tier2
+        druid.server.http.numThreads=5
+        druid.processing.buffer.sizeBytes=536870912
+        druid.processing.numMergeBuffers=1
+        druid.processing.numThreads=1
+
+        # Set the tier to tier2
+        druid.server.tier=tier2
+
+        # Specify priority (lower means higher priority)
+        druid.server.priority=10
+
+        # Segment storage, cache: 200MB, server: 2GB
+        druid.segmentCache.locations=[{\"path\":\"/druid/data/segments\",\"maxSize\":214748364}]
+        druid.server.maxSize=2147483648
       extra.jvm.options: |-
         -Xmx512M
         -Xms512M
