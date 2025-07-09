@@ -161,6 +161,37 @@ deploy_druid_cluster() {
     log_success "Druid cluster created"
 }
 
+install_prometheus() {
+    log_info "Installing Prometheus..."
+
+    # Check if Prometheus is already installed
+    if helm list -n monitoring | grep -q "prometheus"; then
+        log_info "Prometheus is already installed. Continuing..."
+        return 0
+    fi
+
+    # Create monitoring namespace
+    kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+
+    # Add Prometheus Community Helm repository
+    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+    helm repo update
+
+    # Install Prometheus with basic configuration
+    helm install prometheus prometheus-community/kube-prometheus-stack \
+        --namespace monitoring \
+        --set prometheus.prometheusSpec.retention=1d \
+        --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.resources.requests.storage=1Gi \
+        --set grafana.enabled=true \
+        --set grafana.adminPassword=admin \
+        --wait --timeout=300s
+
+    # Verify installation
+    kubectl wait --for=condition=available deployment/prometheus-kube-prometheus-operator -n monitoring --timeout=300s
+
+    log_success "Prometheus installed successfully!"
+}
+
 install_superset() {
     log_info "Installing Apache Superset..."
 
@@ -216,15 +247,25 @@ get_access_info() {
     echo -e "   ${YELLOW}kubectl port-forward -n druid svc/superset 8080:8088${NC}"
     echo -e "   Open: ${YELLOW}http://localhost:8080${NC} (credentials: admin/admin)"
     echo
-    echo "5. Check cluster status:"
+    echo "5. Access Prometheus:"
+    echo -e "   ${YELLOW}kubectl port-forward -n monitoring svc/prometheus-operated 9090:9090${NC}"
+    echo -e "   Open: ${YELLOW}http://localhost:9090${NC}"
+    echo
+    echo "6. Access Grafana (included with Prometheus):"
+    echo -e "   ${YELLOW}kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80${NC}"
+    echo -e "   Open: ${YELLOW}http://localhost:3000${NC} (credentials: admin/admin)"
+    echo
+    echo "7. Check cluster status:"
     echo -e "   ${YELLOW}kubectl get pods -n $NAMESPACE${NC}"
+    echo -e "   ${YELLOW}kubectl get pods -n monitoring${NC}"
     echo -e "   ${YELLOW}kubectl get druid -n $NAMESPACE${NC}"
     echo
     echo "Useful Commands:"
     echo -e "- View logs: ${YELLOW}kubectl logs -n $NAMESPACE <pod-name>${NC}"
     echo -e "- Describe Druid: ${YELLOW}kubectl describe druid druid-cluster -n $NAMESPACE${NC}"
+    echo -e "- View Prometheus targets: ${YELLOW}kubectl get servicemonitors -n monitoring${NC}"
     echo
-    echo -e "${GREEN}Happy querying with Apache Druid and Superset!${NC}"
+    echo -e "${GREEN}Happy querying with Apache Druid, Superset, and monitoring with Prometheus!${NC}"
     echo
 }
 
@@ -244,6 +285,9 @@ main() {
     deploy_zookeeper
     deploy_druid_cluster
     ingest_wikipedia_datasource
+
+    log_header "Monitoring"
+    install_prometheus
 
     log_header "Superset"
     install_superset
