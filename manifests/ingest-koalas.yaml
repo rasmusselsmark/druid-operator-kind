@@ -1,0 +1,84 @@
+apiVersion: druid.apache.org/v1alpha1
+kind: DruidIngestion
+metadata:
+  name: koalas-to-the-max
+spec:
+  suspend: false
+  druidCluster: tiny-cluster
+  ingestion:
+    type: native-batch
+    spec: |-
+      {
+        "type": "index_parallel",
+        "spec": {
+          "ioConfig": {
+            "type": "index_parallel",
+            "inputSource": {
+              "type": "http",
+              "uris": [
+                "https://static.imply.io/example-data/kttm-v2/kttm-v2-2019-08-25.json.gz"
+              ]
+            },
+            "inputFormat": {
+              "type": "json"
+            }
+          },
+          "dataSchema": {
+            "dataSource": "kttm1",
+            "granularitySpec": {
+              "segmentGranularity": "day",
+              "queryGranularity": "none",
+              "rollup": false
+            },
+            "timestampSpec": {
+              "column": "timestamp",
+              "format": "iso"
+            },
+            "dimensionsSpec": {
+              "dimensions": [
+                "agent_category",
+                "agent_type",
+                "browser",
+                "browser_version",
+                "city",
+                "continent",
+                "country",
+                "version",
+                "event_type",
+                "event_subtype",
+                "loaded_image",
+                "adblock_list",
+                "forwarded_for",
+                {
+                  "type": "auto",
+                  "name": "language",
+                  "castToType": "ARRAY<STRING>"
+                },
+                "number",
+                "os",
+                "path",
+                "platform",
+                "referrer",
+                "referrer_host",
+                "region",
+                "remote_address",
+                "screen",
+                "session",
+                {
+                  "type": "long",
+                  "name": "session_length"
+                },
+                "timezone",
+                "timezone_offset",
+                "window"
+              ]
+            }
+          },
+          "tuningConfig": {
+            "type": "index_parallel",
+            "partitionsSpec": {
+              "type": "dynamic"
+            }
+          }
+        }
+      }

@@ -220,15 +220,16 @@ install_superset() {
     log_success "Apache Superset installed successfully!"
 }
 
-ingest_wikipedia_datasource() {
+ingest_datasources() {
     log_info "Starting Wikipedia data ingestion..."
 
     kubectl apply -n $NAMESPACE -f manifests/ingest-wikipedia.yaml
+    kubectl apply -n $NAMESPACE -f manifests/ingest-koalas.yaml
 
-    log_info "Wikipedia ingestion task submitted to Druid"
+    log_info "Wikipedia and Koalas ingestion tasks submitted to Druid"
     log_info "You can check ingestion status in the Druid console under Tasks"
 
-    log_success "Wikipedia ingestion initiated"
+    log_success "Ingestion initiated"
 }
 
 get_access_info() {
@@ -291,7 +292,7 @@ main() {
     install_druid_operator
     deploy_zookeeper
     deploy_druid_cluster
-    ingest_wikipedia_datasource
+    ingest_datasources
 
     log_header "Monitoring"
     install_prometheus
