@@ -80,7 +80,7 @@ spec:
     #
     # Extensions
     #
-    druid.extensions.loadList=["druid-kafka-indexing-service","druid-s3-extensions"]
+    druid.extensions.loadList=["druid-kafka-indexing-service","druid-s3-extensions","prometheus-emitter"]
 
     #
     # Service discovery
@@ -91,6 +91,14 @@ spec:
     druid.indexer.logs.type=file
     druid.indexer.logs.directory=/druid/data/indexing-logs
     druid.lookup.enableLookupSyncOnStartup=false
+
+    # Prometheus metrics configuration
+    druid.emitter=prometheus
+    druid.emitter.prometheus.strategy=exporter
+    druid.emitter.prometheus.port=9090
+    druid.emitter.prometheus.addHostAsLabel=true
+    druid.emitter.prometheus.addServiceAsLabel=true
+    druid.emitter.prometheus.clusterName=local-druid
 
   metricDimensions.json: |-
     {

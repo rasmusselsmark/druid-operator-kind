@@ -180,11 +180,14 @@ install_prometheus() {
     # Install Prometheus with basic configuration
     helm install prometheus prometheus-community/kube-prometheus-stack \
         --namespace monitoring \
-        --set prometheus.prometheusSpec.retention=1d \
-        --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.resources.requests.storage=1Gi \
+        --values helm/prometheus/values.yaml \
         --set grafana.enabled=true \
         --set grafana.adminPassword=admin \
         --wait --timeout=300s
+
+    # now that Prometheus is installed, we can deploy the Druid metrics service and service monitor
+    kubectl apply -n $NAMESPACE -f manifests/druid-metrics-service.yaml
+    kubectl apply -n $NAMESPACE -f manifests/druid-service-monitor.yml
 
     # Verify installation
     kubectl wait --for=condition=available deployment/prometheus-kube-prometheus-operator -n monitoring --timeout=300s
@@ -255,7 +258,11 @@ get_access_info() {
     echo -e "   ${YELLOW}kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80${NC}"
     echo -e "   Open: ${YELLOW}http://localhost:3000${NC} (credentials: admin/admin)"
     echo
-    echo "7. Check cluster status:"
+    echo "7. Access Druid Prometheus Exporter:"
+    echo -e "   ${YELLOW}kubectl port-forward -n druid svc/druid-prometheus-exporter 8081:8080${NC}"
+    echo -e "   Open: ${YELLOW}http://localhost:8081/metrics${NC}"
+    echo
+    echo "8. Check cluster status:"
     echo -e "   ${YELLOW}kubectl get pods -n $NAMESPACE${NC}"
     echo -e "   ${YELLOW}kubectl get pods -n monitoring${NC}"
     echo -e "   ${YELLOW}kubectl get druid -n $NAMESPACE${NC}"
