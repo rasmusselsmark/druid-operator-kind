@@ -30,7 +30,7 @@ bootstrapScript: |
   echo "Creating Druid connection..."
   superset set-database-uri \
     -d "Druid" \
-    -u "druid://druid-tiny-cluster-routers.druid.svc.cluster.local:8088/druid/v2/sql"
+    -u "druid://druid-druid-cluster-routers.druid.svc.cluster.local:8088/druid/v2/sql"
 
 configOverrides:
   secret: |

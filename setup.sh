@@ -60,6 +60,10 @@ create_kind_cluster() {
 
     if kind get clusters | grep -q "^$CLUSTER_NAME$"; then
         log_info "Cluster $CLUSTER_NAME already exists. Continuing..."
+
+        # set the context to the kind cluster
+        kubectl config use-context kind-druid
+
         return 0
     fi
 
@@ -140,7 +144,7 @@ deploy_minio() {
 deploy_zookeeper() {
     log_info "Deploying ZooKeeper..."
 
-    kubectl apply -n $NAMESPACE -f manifests/tiny-cluster-zk.yaml
+    kubectl apply -n $NAMESPACE -f manifests/zookeeper.yaml
 
     log_success "ZooKeeper deployed successfully!"
 }
@@ -152,11 +156,11 @@ deploy_druid_cluster() {
     log_info "Waiting for dependencies to be ready..."
 
     # Apply Druid cluster
-    kubectl apply -n $NAMESPACE -f manifests/tiny-cluster.yaml
+    kubectl apply -n $NAMESPACE -f manifests/druid-cluster.yaml
 
     log_info "Waiting for Druid cluster to be ready (this may take several minutes)..."
 
-    kubectl wait --for=jsonpath='{status.druidNodeStatus.druidNodeConditionType}'=DruidClusterReady druid/tiny-cluster -n $NAMESPACE --timeout=360s
+    kubectl wait --for=jsonpath='{status.druidNodeStatus.druidNodeConditionType}'=DruidClusterReady druid/druid-cluster -n $NAMESPACE --timeout=360s
 
     log_success "Druid cluster created"
 }
@@ -239,7 +243,7 @@ get_access_info() {
     echo "To access your Druid cluster:"
     echo
     echo "1. Port forward the router service:"
-    echo -e "   ${YELLOW}kubectl port-forward -n druid svc/druid-tiny-cluster-routers 8088${NC}"
+    echo -e "   ${YELLOW}kubectl port-forward -n druid svc/druid-druid-cluster-routers 8088${NC}"
     echo
     echo -e "2. Open your browser to: ${YELLOW}http://localhost:8088${NC}"
     echo

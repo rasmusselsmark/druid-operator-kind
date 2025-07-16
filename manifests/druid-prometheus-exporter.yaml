@@ -1,0 +1,190 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: druid-prometheus-exporter
+  namespace: druid
+  labels:
+    app: druid-prometheus-exporter
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+spec:
+  selector:
+    app: druid-prometheus-exporter
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: druid-prometheus-exporter
+  namespace: druid
+  labels:
+    app: druid-prometheus-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: druid-prometheus-exporter
+  template:
+    metadata:
+      labels:
+        app: druid-prometheus-exporter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      containers:
+        - name: druid-metrics-exporter
+          image: python:3.9-alpine
+          ports:
+            - containerPort: 8080
+              name: metrics
+          volumeMounts:
+            - name: exporter-config
+              mountPath: /app/config
+          workingDir: /app
+          command:
+            - /bin/sh
+            - -c
+            - |
+              apk add --no-cache curl
+              pip install prometheus_client flask
+
+              cat > /app/exporter.py << 'EOF'
+              from flask import Flask, Response
+              import prometheus_client
+              import requests
+              import time
+              import threading
+
+              app = Flask(__name__)
+
+              # Prometheus metrics
+              druid_service_up = prometheus_client.Gauge('druid_service_up', 'Druid service status', ['service'])
+              druid_jvm_memory_used = prometheus_client.Gauge('druid_jvm_memory_used_bytes', 'JVM memory used', ['service'])
+              druid_jvm_memory_max = prometheus_client.Gauge('druid_jvm_memory_max_bytes', 'JVM memory max', ['service'])
+              druid_jvm_gc_count = prometheus_client.Counter('druid_jvm_gc_count_total', 'JVM GC count', ['service'])
+              druid_query_count = prometheus_client.Counter('druid_query_count_total', 'Query count', ['service', 'type'])
+              druid_query_time = prometheus_client.Histogram('druid_query_time_seconds', 'Query time', ['service', 'type'])
+
+              def scrape_druid_metrics():
+                  while True:
+                      services = ['brokers', 'coordinators', 'historicals', 'routers']
+
+                      for service in services:
+                          service_name = service.rstrip('s')
+                          url = f"http://druid-druid-cluster-{service}:8088"
+
+                          try:
+                              # Check service health
+                              health_response = requests.get(f"{url}/status/health", timeout=5)
+                              druid_service_up.labels(service=service_name).set(1 if health_response.status_code == 200 else 0)
+
+                              if health_response.status_code == 200:
+                                  # Get metrics
+                                  metrics_response = requests.get(f"{url}/druid/coordinator/v1/metrics", timeout=10)
+                                  if metrics_response.status_code == 200:
+                                      metrics_text = metrics_response.text
+
+                                      # Parse JVM metrics
+                                      for line in metrics_text.split('\n'):
+                                          if 'jvm/mem/used' in line and 'jvm/mem/used' in line:
+                                              try:
+                                                  value = float(line.split()[-1])
+                                                  druid_jvm_memory_used.labels(service=service_name).set(value)
+                                              except (ValueError, IndexError):
+                                                  pass
+                                          elif 'jvm/mem/max' in line and 'jvm/mem/max' in line:
+                                              try:
+                                                  value = float(line.split()[-1])
+                                                  druid_jvm_memory_max.labels(service=service_name).set(value)
+                                              except (ValueError, IndexError):
+                                                  pass
+                                          elif 'jvm/gc/count' in line:
+                                              try:
+                                                  value = float(line.split()[-1])
+                                                  druid_jvm_gc_count.labels(service=service_name).inc(value)
+                                              except (ValueError, IndexError):
+                                                  pass
+                                          elif 'query/count' in line:
+                                              try:
+                                                  value = float(line.split()[-1])
+                                                  druid_query_count.labels(service=service_name, type='total').inc(value)
+                                              except (ValueError, IndexError):
+                                                  pass
+                                          elif 'query/time' in line:
+                                              try:
+                                                  value = float(line.split()[-1]) / 1000.0  # Convert to seconds
+                                                  druid_query_time.labels(service=service_name, type='total').observe(value)
+                                              except (ValueError, IndexError):
+                                                  pass
+                          except Exception as e:
+                              print(f"Error scraping {service}: {e}")
+                              druid_service_up.labels(service=service_name).set(0)
+
+                      time.sleep(30)
+
+              @app.route('/metrics')
+              def metrics():
+                  return Response(prometheus_client.generate_latest(), mimetype='text/plain')
+
+              @app.route('/health')
+              def health():
+                  return {'status': 'healthy'}
+
+              if __name__ == '__main__':
+                  # Start background scraping thread
+                  scraper_thread = threading.Thread(target=scrape_druid_metrics, daemon=True)
+                  scraper_thread.start()
+
+                  app.run(host='0.0.0.0', port=8080)
+              EOF
+
+              python /app/exporter.py
+      volumes:
+        - name: exporter-config
+          emptyDir: {}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: druid-service-monitor
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: druid-prometheus-exporter
+  endpoints:
+    - port: metrics
+      interval: 30s
+      path: /metrics
+  namespaceSelector:
+    matchNames:
+      - druid
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: druid-services-monitor
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels: {}
+  endpoints:
+    - port: http
+      interval: 30s
+      path: /druid/coordinator/v1/metrics
+      scrapeTimeout: 10s
+  namespaceSelector:
+    matchNames:
+      - druid

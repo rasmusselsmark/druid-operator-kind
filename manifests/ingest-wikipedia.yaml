@@ -4,7 +4,7 @@ metadata:
   name: wikipedia
 spec:
   suspend: false
-  druidCluster: tiny-cluster
+  druidCluster: druid-cluster
   ingestion:
     type: native-batch
     spec: |-

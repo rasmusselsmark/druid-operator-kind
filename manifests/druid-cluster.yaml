@@ -6,7 +6,7 @@
 apiVersion: "druid.apache.org/v1alpha1"
 kind: "Druid"
 metadata:
-  name: tiny-cluster
+  name: druid-cluster
 spec:
   image: apache/druid:33.0.0
   # Optionally specify image for all nodes. Can be specify on nodes also
@@ -56,7 +56,7 @@ spec:
   common.runtime.properties: |
 
     # Zookeeper
-    druid.zk.service.host=tiny-cluster-zk-0.tiny-cluster-zk
+    druid.zk.service.host=zookeeper-0.zookeeper
     druid.zk.paths.base=/druid
     druid.zk.service.compress=false
 
@@ -80,7 +80,7 @@ spec:
     #
     # Extensions
     #
-    druid.extensions.loadList=["druid-kafka-indexing-service","druid-s3-extensions","prometheus-emitter"]
+    druid.extensions.loadList=["druid-kafka-indexing-service","druid-s3-extensions","prometheus-emitter","druid-parquet-extensions","druid-google-extensions"]
 
     #
     # Service discovery
@@ -98,6 +98,7 @@ spec:
     druid.emitter.prometheus.port=9090
     druid.emitter.prometheus.addHostAsLabel=true
     druid.emitter.prometheus.addServiceAsLabel=true
+    # druid.emitter.prometheus.dimensionMapPath=/opt/imply/user/metrics-with-datasources-2.json
     druid.emitter.prometheus.clusterName=local-druid
 
   metricDimensions.json: |-
