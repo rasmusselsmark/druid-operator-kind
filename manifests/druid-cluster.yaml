@@ -68,10 +68,10 @@ spec:
     druid.zk.service.compress=false
 
     # Metadata Store
-    druid.metadata.storage.type=derby
-    druid.metadata.storage.connector.connectURI=jdbc:derby://localhost:1527/druid/data/derbydb/metadata.db;create=true
-    druid.metadata.storage.connector.host=localhost
-    druid.metadata.storage.connector.port=1527
+    druid.metadata.storage.type=postgresql
+    druid.metadata.storage.connector.connectURI=jdbc:postgresql://postgresql.druid.svc.cluster.local:5432/druid
+    druid.metadata.storage.connector.user=druid
+    druid.metadata.storage.connector.password=druid123
     druid.metadata.storage.connector.createTables=true
 
     # Deep Storage - MinIO S3 Compatible
@@ -87,7 +87,7 @@ spec:
     #
     # Extensions
     #
-    druid.extensions.loadList=["druid-kafka-indexing-service","druid-s3-extensions","prometheus-emitter","druid-parquet-extensions","druid-google-extensions"]
+    druid.extensions.loadList=["druid-kafka-indexing-service","druid-s3-extensions","prometheus-emitter","druid-parquet-extensions","druid-google-extensions","postgresql-metadata-storage"]
 
     #
     # Service discovery

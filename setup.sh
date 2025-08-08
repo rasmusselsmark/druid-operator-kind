@@ -149,6 +149,18 @@ deploy_zookeeper() {
     log_success "ZooKeeper deployed successfully!"
 }
 
+deploy_postgresql() {
+    log_info "Deploying PostgreSQL for Druid metadata store..."
+
+    kubectl apply -n $NAMESPACE -f manifests/postgresql.yaml
+
+    # Wait for PostgreSQL to be ready
+    log_info "Waiting for PostgreSQL to be ready..."
+    kubectl wait --for=condition=available deployment/postgresql -n $NAMESPACE --timeout=300s
+
+    log_success "PostgreSQL deployed successfully!"
+}
+
 deploy_druid_cluster() {
     log_info "Deploying Druid cluster..."
 
@@ -283,6 +295,7 @@ main() {
     log_header "Druid"
     install_druid_operator
     deploy_zookeeper
+    deploy_postgresql
     deploy_druid_cluster
     ingest_datasources
 
