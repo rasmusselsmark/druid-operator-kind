@@ -30,6 +30,13 @@ spec:
     - spec:
         type: ClusterIP
         clusterIP: None
+        ports:
+        - name: http
+          port: 8088
+          targetPort: 8088
+        - name: metrics
+          port: 9090
+          targetPort: 9090
   commonConfigMountPath: "/opt/druid/conf/druid/cluster/_common"
   jvm.options: |-
     -server
@@ -98,7 +105,7 @@ spec:
     druid.emitter.prometheus.port=9090
     druid.emitter.prometheus.addHostAsLabel=true
     druid.emitter.prometheus.addServiceAsLabel=true
-    # druid.emitter.prometheus.dimensionMapPath=/opt/imply/user/metrics-with-datasources-2.json
+    druid.emitter.prometheus.extraLabels={"druid_cluster_id": "d0769665-9c42"}
     druid.emitter.prometheus.clusterName=local-druid
 
   metricDimensions.json: |-
@@ -282,13 +289,13 @@ spec:
 
   nodes:
     brokers:
-      # Optionally specify for running broker as Deployment
-      # kind: Deployment
       nodeType: "broker"
-      # Optionally specify for broker nodes
-      # imagePullSecrets:
-      # - name: tutu
       druid.port: 8088
+      ports:
+      - name: http
+        containerPort: 8088
+      - name: metrics
+        containerPort: 9090
       nodeConfigMountPath: "/opt/druid/conf/druid/cluster/query/broker"
       replicas: 1
       volumeClaimTemplates:
@@ -320,6 +327,11 @@ spec:
       # kind: Deployment
       nodeType: "coordinator"
       druid.port: 8088
+      ports:
+      - name: http
+        containerPort: 8088
+      - name: metrics
+        containerPort: 9090
       nodeConfigMountPath: "/opt/druid/conf/druid/cluster/master/coordinator-overlord"
       replicas: 1
       runtime.properties: |
@@ -341,6 +353,11 @@ spec:
     historicals:
       nodeType: "historical"
       druid.port: 8088
+      ports:
+      - name: http
+        containerPort: 8088
+      - name: metrics
+        containerPort: 9090
       nodeConfigMountPath: "/opt/druid/conf/druid/cluster/data/historical"
       replicas: 1
       runtime.properties: |
@@ -361,6 +378,11 @@ spec:
     historicals-tier2:
       nodeType: "historical"
       druid.port: 8088
+      ports:
+      - name: http
+        containerPort: 8088
+      - name: metrics
+        containerPort: 9090
       nodeConfigMountPath: "/opt/druid/conf/druid/cluster/data/historical"
       replicas: 1
       runtime.properties: |
@@ -386,6 +408,11 @@ spec:
     routers:
       nodeType: "router"
       druid.port: 8088
+      ports:
+      - name: http
+        containerPort: 8088
+      - name: metrics
+        containerPort: 9090
       nodeConfigMountPath: "/opt/druid/conf/druid/cluster/query/router"
       replicas: 1
       runtime.properties: |

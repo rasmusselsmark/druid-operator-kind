@@ -157,11 +157,11 @@ deploy_druid_cluster() {
 
     # Apply Druid cluster
     kubectl apply -n $NAMESPACE -f manifests/druid-cluster.yaml
+}
 
+wait_for_druid_cluster() {
     log_info "Waiting for Druid cluster to be ready (this may take several minutes)..."
-
     kubectl wait --for=jsonpath='{status.druidNodeStatus.druidNodeConditionType}'=DruidClusterReady druid/druid-cluster -n $NAMESPACE --timeout=360s
-
     log_success "Druid cluster created"
 }
 
@@ -192,10 +192,11 @@ install_prometheus() {
     # now that Prometheus is installed, we can deploy the Druid metrics service and service monitor
     kubectl apply -n $NAMESPACE -f manifests/druid-metrics-service.yaml
     kubectl apply -n $NAMESPACE -f manifests/druid-service-monitor.yml
+}
 
-    # Verify installation
+wait_for_prometheus() {
+    log_info "Waiting for Prometheus to be ready..."
     kubectl wait --for=condition=available deployment/prometheus-kube-prometheus-operator -n monitoring --timeout=300s
-
     log_success "Prometheus installed successfully!"
 }
 
@@ -240,42 +241,27 @@ get_access_info() {
     echo
     echo -e "${GREEN}=== Druid Cluster Setup Complete ===${NC}"
     echo
-    echo "To access your Druid cluster:"
+    echo "To access services:"
     echo
-    echo "1. Port forward the router service:"
+    echo "1. Druid:"
     echo -e "   ${YELLOW}kubectl port-forward -n druid svc/druid-druid-cluster-routers 8088${NC}"
+    echo -e "   Open: ${YELLOW}http://localhost:8088${NC}"
     echo
-    echo -e "2. Open your browser to: ${YELLOW}http://localhost:8088${NC}"
+    echo "2. MinIO Console:"
+    echo -e "   ${YELLOW}kubectl port-forward -n druid svc/minio-console 8090:9090${NC}"
+    echo -e "   Open: ${YELLOW}http://localhost:8090${NC} (credentials: minio/minio123)"
     echo
-    echo "3. Access MinIO Console (optional):"
-    echo -e "   ${YELLOW}kubectl port-forward -n druid svc/minio-console 9090${NC}"
-    echo -e "   Open: ${YELLOW}http://localhost:9090${NC} (credentials: minio/minio123)"
-    echo
-    echo "4. Access Superset Dashboard:"
-    echo -e "   ${YELLOW}kubectl port-forward -n druid svc/superset 8080:8088${NC}"
+    echo "3. Superset Dashboard:"
+    echo -e "   ${YELLOW}kubectl port-forward -n druid svc/superset 8089:8088${NC}"
     echo -e "   Open: ${YELLOW}http://localhost:8080${NC} (credentials: admin/admin)"
     echo
-    echo "5. Access Prometheus:"
+    echo "4. Prometheus:"
     echo -e "   ${YELLOW}kubectl port-forward -n monitoring svc/prometheus-operated 9090:9090${NC}"
     echo -e "   Open: ${YELLOW}http://localhost:9090${NC}"
     echo
-    echo "6. Access Grafana (included with Prometheus):"
+    echo "5. Grafana:"
     echo -e "   ${YELLOW}kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80${NC}"
     echo -e "   Open: ${YELLOW}http://localhost:3000${NC} (credentials: admin/admin)"
-    echo
-    echo "7. Access Druid Prometheus Exporter:"
-    echo -e "   ${YELLOW}kubectl port-forward -n druid svc/druid-prometheus-exporter 8081:8080${NC}"
-    echo -e "   Open: ${YELLOW}http://localhost:8081/metrics${NC}"
-    echo
-    echo "8. Check cluster status:"
-    echo -e "   ${YELLOW}kubectl get pods -n $NAMESPACE${NC}"
-    echo -e "   ${YELLOW}kubectl get pods -n monitoring${NC}"
-    echo -e "   ${YELLOW}kubectl get druid -n $NAMESPACE${NC}"
-    echo
-    echo "Useful Commands:"
-    echo -e "- View logs: ${YELLOW}kubectl logs -n $NAMESPACE <pod-name>${NC}"
-    echo -e "- Describe Druid: ${YELLOW}kubectl describe druid druid-cluster -n $NAMESPACE${NC}"
-    echo -e "- View Prometheus targets: ${YELLOW}kubectl get servicemonitors -n monitoring${NC}"
     echo
     echo -e "${GREEN}Happy querying with Apache Druid, Superset, and monitoring with Prometheus!${NC}"
     echo
@@ -300,6 +286,9 @@ main() {
 
     log_header "Monitoring"
     install_prometheus
+
+    wait_for_druid_cluster
+    wait_for_prometheus
 
     log_header "Superset"
     install_superset

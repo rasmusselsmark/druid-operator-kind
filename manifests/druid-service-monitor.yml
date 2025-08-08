@@ -3,8 +3,8 @@ kind: ServiceMonitor
 metadata:
   name: druid-metrics
 spec:
-  endpoints:
-  - port: metrics
   selector:
     matchLabels:
       druid-cluster: local
+  endpoints:
+  - port: metrics
