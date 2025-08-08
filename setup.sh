@@ -214,9 +214,11 @@ install_superset() {
     helm repo update
 
     # Install Superset
+    # TODO: we're installing specific version, latest caused issue https://github.com/apache/superset/discussions/31431
     helm install superset superset/superset \
         --namespace $NAMESPACE \
         --values helm/superset/values.yaml \
+        --version 0.14.3 \
         --wait --timeout=300s
 
     # Verify installation
@@ -248,12 +250,12 @@ get_access_info() {
     echo -e "   Open: ${YELLOW}http://localhost:8088${NC}"
     echo
     echo "2. MinIO Console:"
-    echo -e "   ${YELLOW}kubectl port-forward -n druid svc/minio-console 8090:9090${NC}"
-    echo -e "   Open: ${YELLOW}http://localhost:8090${NC} (credentials: minio/minio123)"
+    echo -e "   ${YELLOW}kubectl port-forward -n druid svc/minio-console 8089:9090${NC}"
+    echo -e "   Open: ${YELLOW}http://localhost:8089${NC} (credentials: minio/minio123)"
     echo
     echo "3. Superset Dashboard:"
-    echo -e "   ${YELLOW}kubectl port-forward -n druid svc/superset 8089:8088${NC}"
-    echo -e "   Open: ${YELLOW}http://localhost:8080${NC} (credentials: admin/admin)"
+    echo -e "   ${YELLOW}kubectl port-forward -n druid svc/superset 8090:8088${NC}"
+    echo -e "   Open: ${YELLOW}http://localhost:8090${NC} (credentials: admin/admin)"
     echo
     echo "4. Prometheus:"
     echo -e "   ${YELLOW}kubectl port-forward -n monitoring svc/prometheus-operated 9090:9090${NC}"
