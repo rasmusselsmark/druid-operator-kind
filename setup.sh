@@ -275,7 +275,8 @@ get_access_info() {
     echo
     echo "5. Grafana:"
     echo -e "   ${YELLOW}kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80${NC}"
-    echo -e "   Open: ${YELLOW}http://localhost:3000${NC} (credentials: admin/admin)"
+    echo -e "   Open: ${YELLOW}http://localhost:3000/explore${NC} (credentials: admin/admin)"
+    echo -e "   Example query: ${BLUE}druid_segment_size{}${NC}"
     echo
     echo -e "${GREEN}Happy querying with Apache Druid, Superset, and monitoring with Prometheus!${NC}"
     echo
