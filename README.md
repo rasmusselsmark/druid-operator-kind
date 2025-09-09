@@ -13,7 +13,7 @@ This repository provides a setup guide for running Apache Druid locally using Ku
 
 If running using Colima, make sure you have enough resource, e.g.
 ```
-colima start --memory 12 --cpu 6 --disk 30
+colima start --memory 12 --cpu 6 --disk 100
 ```
 
 ### Setup
